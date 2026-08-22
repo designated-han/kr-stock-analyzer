@@ -1,0 +1,67 @@
+# KR Stock Analyzer — Cursor Rules
+
+## 프로젝트 개요
+한국 상장기업을 분석하는 AI 멀티에이전트 시스템.
+Anthropic Claude API를 사용하여 여러 전문가 에이전트가 병렬로 기업을 분석하고,
+투자 철학 에이전트가 재해석한 뒤, 종합 리포트를 생성한다.
+
+## 아키텍처
+- **Hub-Spoke 패턴**: `core/orchestrator.py`가 모든 에이전트를 조율
+- **4계층 파이프라인**: 데이터 수집 → 실무 분석(병렬) → 철학 평가(병렬) → 리포트 합성
+- **에이전트 = 프롬프트 + 스키마**: 각 에이전트는 `agents/prompts/`의 시스템 프롬프트와 `agents/schemas/`의 Pydantic 모델로 정의됨
+
+## 에이전트 구성
+
+### 실무 분석 계층 (Analyst Layer)
+1. `financial` — 재무분석가: 재무제표, 밸류에이션 (DART API)
+2. `industry` — 산업분석가: 경쟁환경, 시장규모 (Naver, Web)
+3. `risk` — 리스크분석가: 규제, ESG, 지배구조 (DART 공시, 뉴스)
+4. `technical` — 기술분석가: 차트, 수급, 모멘텀 (KRX API)
+5. `economist` — 이코노미스트: 금리, CPI, GDP, 환율 (BOK API)
+
+### 투자 철학 계층 (Philosophy Layer)
+1. `buffett` — 버핏/그레이엄: 가치투자 (안전마진, 해자)
+2. `lynch` — 피터 린치: GARP (PEG, 6분류)
+3. `dalio` — 레이 달리오: 매크로 (경기사이클, 부채주기)
+
+### 합성 계층 (Synthesis Layer)
+- `synthesizer` — 리포트 합성: 충돌 해소, 종합 점수, PDF 생성
+
+## 코딩 컨벤션
+- Python 3.11+, 타입 힌트 필수
+- async/await 기반 (에이전트 병렬 실행)
+- Pydantic v2로 모든 입출력 검증
+- 에이전트 프롬프트는 `agents/prompts/` 아래 .md 파일로 분리
+- 환경변수는 .env, pydantic-settings로 로드
+- 한국어 주석 OK, 변수/함수명은 영어
+
+## 데이터 소스
+- DART Open API: 재무제표, 공시, 지분 (httpx 직접 호출)
+- Naver Search API: 뉴스, 블로그 (httpx 직접 호출)
+- Web Search: 산업 보고서 (필요시 추가)
+
+## 비용 최적화
+- 데이터 수집 단계: Haiku 모델 사용 (저비용)
+- 실무 분석 단계: Sonnet 모델 사용 (균형)
+- 철학 평가 + 합성: Sonnet 또는 Opus (고품질)
+- 프롬프트 캐싱 적극 활용 (시스템 프롬프트 고정)
+
+## 주요 파일 구조
+```
+kr-stock-analyzer/
+├── core/
+│   ├── orchestrator.py    # 파이프라인 오케스트레이터
+│   ├── agent_runner.py    # Claude API 호출 + 에이전트 실행
+│   ├── config.py          # 설정 (API 키, 모델 등)
+│   └── models.py          # 공통 Pydantic 모델
+├── agents/
+│   ├── prompts/           # 에이전트별 시스템 프롬프트 (.md)
+│   └── schemas/           # 에이전트별 출력 스키마 (.py)
+├── data/
+│   ├── dart_client.py     # DART API 클라이언트
+│   ├── naver_client.py    # Naver Search API 클라이언트
+│   └── krx_client.py      # KRX 시세 클라이언트 (Phase 2)
+├── output/
+│   └── report_builder.py  # 리포트 생성 (Markdown → PDF)
+└── main.py                # CLI 진입점
+```

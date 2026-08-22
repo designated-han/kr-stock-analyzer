@@ -1,0 +1,18 @@
+# Environment
+.env
+.venv/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Output
+output/*.pdf
+output/*.html
+output/*.json
+
+# OS
+.DS_Store
+Thumbs.db
