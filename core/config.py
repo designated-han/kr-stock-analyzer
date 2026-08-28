@@ -1,7 +1,31 @@
-"""애플리케이션 설정."""
+"""애플리케이션 설정.
+
+로컬: .env 파일에서 로드
+Streamlit Cloud: st.secrets → 환경변수로 주입 후 로드
+"""
+
+import os
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+
+def _inject_streamlit_secrets() -> None:
+    """Streamlit Cloud의 secrets를 환경변수로 주입합니다.
+
+    Streamlit Cloud에서는 .env 대신 secrets.toml을 사용하므로,
+    st.secrets의 값을 os.environ에 넣어 pydantic-settings가 읽을 수 있게 합니다.
+    """
+    try:
+        import streamlit as st
+        for key, value in st.secrets.items():
+            if isinstance(value, str):
+                os.environ.setdefault(key.upper(), value)
+    except Exception:
+        pass  # Streamlit 외 환경(CLI 등)에서는 무시
+
+
+_inject_streamlit_secrets()
 
 
 class Settings(BaseSettings):
@@ -24,7 +48,7 @@ class Settings(BaseSettings):
     max_concurrent_agents: int = Field(5, description="최대 동시 에이전트 수")
     max_retries: int = Field(2, description="에이전트 실패 시 재시도 횟수")
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
