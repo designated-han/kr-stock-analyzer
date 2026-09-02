@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: kr-stock-analyzer
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DART_API_KEY
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12"
