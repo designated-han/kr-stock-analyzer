@@ -4,7 +4,10 @@
 API 문서: https://developers.naver.com/docs/serviceapi/search/news/news.md
 """
 
+import asyncio
 import logging
+import re
+from html import unescape
 from typing import Any
 
 import httpx
@@ -109,8 +112,6 @@ class NaverClient:
         Returns:
             {"news": [...], "blog": [...], "sentiment_summary": "..."}
         """
-        import asyncio
-
         # 기본 검색 + 키워드별 검색
         queries = [company_name]
         if keywords:
@@ -144,7 +145,5 @@ class NaverClient:
 
 
 def _strip_html(text: str) -> str:
-    """간단한 HTML 태그 제거."""
-    import re
-    clean = re.sub(r"<[^>]+>", "", text)
-    return clean.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+    """HTML 태그 및 엔티티를 제거합니다."""
+    return unescape(re.sub(r"<[^>]+>", "", text))

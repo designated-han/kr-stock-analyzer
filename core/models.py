@@ -35,6 +35,47 @@ class Risk(BaseModel):
     probability: int = Field(ge=1, le=5, description="발생 확률 (1~5)")
 
 
+class AgentUsage(BaseModel):
+    """에이전트 호출의 토큰/시간/비용 사용량."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    model: str = ""
+    elapsed_seconds: float = 0.0
+    estimated_cost_usd: float = 0.0
+
+    def merge(self, other: "AgentUsage") -> "AgentUsage":
+        """두 사용량을 합산합니다. 비용은 호출 단위 합(모델이 달라도 정확)."""
+        return AgentUsage(
+            input_tokens=self.input_tokens + other.input_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
+            cache_creation_tokens=self.cache_creation_tokens + other.cache_creation_tokens,
+            model=other.model or self.model,
+            elapsed_seconds=self.elapsed_seconds + other.elapsed_seconds,
+            estimated_cost_usd=self.estimated_cost_usd + other.estimated_cost_usd,
+        )
+
+    @classmethod
+    def aggregate(
+        cls,
+        usages: list["AgentUsage"],
+        *,
+        elapsed_seconds: float | None = None,
+        model: str = "pipeline",
+    ) -> "AgentUsage":
+        """여러 에이전트 사용량을 파이프라인 총합으로 합칩니다."""
+        total = cls(model=model)
+        for usage in usages:
+            total = total.merge(usage)
+        total.model = model
+        if elapsed_seconds is not None:
+            total.elapsed_seconds = elapsed_seconds
+        return total
+
+
 class AgentResult(BaseModel):
     """모든 에이전트의 공통 출력 스키마.
 
@@ -48,6 +89,7 @@ class AgentResult(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list, description="근거 목록")
     risks: list[Risk] = Field(default_factory=list, description="식별된 리스크")
     raw_analysis: str = Field(default="", description="상세 분석 텍스트")
+    usage: AgentUsage | None = Field(default=None, description="토큰/비용 사용량")
 
 
 class CompanyInfo(BaseModel):
@@ -91,3 +133,5 @@ class SynthesisResult(BaseModel):
     agreements: list[str] = Field(default_factory=list, description="의견 일치 사항")
     conflicts: list[str] = Field(default_factory=list, description="의견 충돌 사항")
     executive_summary: str = Field(description="Executive Summary")
+    usage: AgentUsage | None = Field(default=None, description="파이프라인 전체 토큰/비용")
+    collected_data: dict = Field(default_factory=dict, description="DART/뉴스 수집 원본")

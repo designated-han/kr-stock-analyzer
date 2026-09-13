@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     """환경변수 기반 설정."""
 
     # Claude API
-    anthropic_api_key: str = Field(..., description="Anthropic API 키")
+    anthropic_api_key: str = Field("", description="Anthropic API 키")
     claude_model_default: str = Field("claude-sonnet-4-20250514", description="기본 모델")
     claude_model_cheap: str = Field("claude-haiku-4-20250414", description="데이터 수집용 저비용 모델")
     claude_model_quality: str = Field("claude-sonnet-4-20250514", description="분석/합성용 고품질 모델")
@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     # 실행 설정
     max_concurrent_agents: int = Field(5, description="최대 동시 에이전트 수")
     max_retries: int = Field(2, description="에이전트 실패 시 재시도 횟수")
+    agent_timeout: int = Field(120, description="에이전트 호출 타임아웃 (초)")
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

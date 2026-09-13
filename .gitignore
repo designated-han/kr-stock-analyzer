@@ -4,6 +4,7 @@
 __pycache__/
 *.pyc
 .streamlit/secrets.toml
+data/corp_codes.json
 
 # IDE
 .vscode/
@@ -13,6 +14,7 @@ __pycache__/
 output/*.pdf
 output/*.html
 output/*.json
+output/*.md
 
 # OS
 .DS_Store

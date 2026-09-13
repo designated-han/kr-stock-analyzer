@@ -89,7 +89,15 @@ async def main() -> None:
             Panel(
                 f"[bold]종합 점수: {result.overall_score:.1f} / 10[/bold]\n"
                 f"투자 의견: [bold]{result.consensus.value}[/bold]\n\n"
-                f"{result.executive_summary}",
+                f"{result.executive_summary}"
+                + (
+                    f"\n\n[dim]토큰 in={result.usage.input_tokens:,} "
+                    f"out={result.usage.output_tokens:,} · "
+                    f"${result.usage.estimated_cost_usd:.4f} · "
+                    f"{result.usage.elapsed_seconds:.0f}초[/dim]"
+                    if result.usage
+                    else ""
+                ),
                 title="분석 결과",
                 border_style="green" if result.overall_score >= 6 else "red",
             )

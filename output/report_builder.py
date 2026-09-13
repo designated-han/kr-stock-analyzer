@@ -13,7 +13,6 @@ from core.models import SynthesisResult, AgentResult
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path(__file__).parent
-TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 
 def build_markdown_report(result: SynthesisResult) -> str:
@@ -21,10 +20,17 @@ def build_markdown_report(result: SynthesisResult) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     company = result.company
 
+    usage_line = ""
+    if result.usage and (result.usage.input_tokens or result.usage.output_tokens):
+        u = result.usage
+        usage_line = (
+            f" | 토큰 {u.input_tokens:,}/{u.output_tokens:,} | 예상비용 ${u.estimated_cost_usd:.4f}"
+        )
+
     lines = [
         f"# {company.name} 투자분석 리포트",
         f"",
-        f"> 생성일: {now} | 시장: {company.market} | 종목코드: {company.stock_code}",
+        f"> 생성일: {now} | 시장: {company.market} | 종목코드: {company.stock_code}{usage_line}",
         f"",
         f"---",
         f"",
@@ -176,7 +182,7 @@ def save_report(
         filepath = output_dir / f"{company_name}_{timestamp}.md"
         filepath.write_text(markdown, encoding="utf-8")
     elif output_format == "html":
-        html = _markdown_to_html(markdown, result.company.name)
+        html = markdown_to_html(markdown, result.company.name)
         filepath = output_dir / f"{company_name}_{timestamp}.html"
         filepath.write_text(html, encoding="utf-8")
     else:
@@ -186,23 +192,28 @@ def save_report(
     return filepath
 
 
-def _markdown_to_html(markdown_text: str, title: str) -> str:
-    """Markdown을 간단한 HTML로 변환합니다.
+def markdown_to_html(markdown_text: str, title: str) -> str:
+    """Markdown을 HTML로 변환합니다."""
+    from html import escape
 
-    별도 라이브러리 없이 기본 변환을 수행합니다.
-    고품질 변환이 필요하면 markdown 또는 mistune 패키지를 사용하세요.
-    """
-    # 기본 HTML 래퍼
-    html_body = markdown_text
-    # 간단한 변환 (프로덕션에서는 markdown 라이브러리 권장)
-    html_body = html_body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    safe_title = escape(title)
+    try:
+        import markdown as md
+        html_body = md.markdown(
+            markdown_text,
+            extensions=["tables", "fenced_code"],
+        )
+    except ImportError:
+        # markdown 패키지 없으면 기본 변환
+        html_body = markdown_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        html_body = f'<pre style="white-space: pre-wrap;">{html_body}</pre>'
 
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} 투자분석 리포트</title>
+    <title>{safe_title} 투자분석 리포트</title>
     <style>
         body {{ font-family: 'Pretendard', -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: #1a1a1a; }}
         h1 {{ color: #1e3a5f; border-bottom: 3px solid #1e3a5f; padding-bottom: 0.5rem; }}
@@ -213,9 +224,12 @@ def _markdown_to_html(markdown_text: str, title: str) -> str:
         th {{ background: #edf2f7; }}
         blockquote {{ border-left: 4px solid #3182ce; padding-left: 1rem; color: #4a5568; }}
         hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0; }}
+        code {{ background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }}
+        pre {{ background: #f8fafc; padding: 1rem; border-radius: 6px; overflow-x: auto; }}
+        pre code {{ background: none; padding: 0; }}
     </style>
 </head>
 <body>
-<pre style="white-space: pre-wrap;">{html_body}</pre>
+{html_body}
 </body>
 </html>"""
